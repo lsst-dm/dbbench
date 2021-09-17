@@ -21,9 +21,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
@@ -76,6 +78,7 @@ func runTest(db Database, df DatabaseFlavor, config *Config) {
 }
 
 var driverName = flag.String("driver", "mysql", "Database driver to use.")
+var connectionUrl = flag.String("url", "", "Connection url (mysql://user:pass@host:port?params), parameters provided here override those provided by other options")
 var baseDir = flag.String("base-dir", "",
 	"Directory to use as base for files (default directory containing runfile).")
 
@@ -84,6 +87,7 @@ var printVersion = flag.Bool("version", false, "Print the version and quit")
 var GlobalConfig ConnectionConfig
 
 func init() {
+
 	flag.StringVar(&GlobalConfig.Username, "username", "",
 		"Database connection username")
 	flag.StringVar(&GlobalConfig.Password, "password", "",
@@ -121,6 +125,34 @@ func main() {
 	configFile := flag.Arg(0)
 	if *baseDir == "" {
 		*baseDir = filepath.Dir(configFile)
+	}
+	if connectionUrl != nil {
+		u, err := url.Parse(*connectionUrl)
+		if err != nil {
+			log.Fatalf("parsing database url %v", err)
+		}
+		if u.Scheme != "" {
+			*driverName = u.Scheme
+		}
+		if u.Host != "" {
+			GlobalConfig.Host = u.Host
+		}
+		if u.User.Username() != "" {
+			GlobalConfig.Username = u.User.Username()
+		}
+		pass, isPassSet := u.User.Password()
+		if isPassSet {
+			GlobalConfig.Password = pass
+		}
+		if u.Hostname() != "" {
+			GlobalConfig.Host = u.Hostname()
+		}
+		if u.Port() != "" {
+			GlobalConfig.Port, _ = strconv.Atoi(u.Port())
+		}
+		if u.Query() != nil {
+			GlobalConfig.Params = u.Query().Encode()
+		}
 	}
 
 	flavor, ok := supportedDatabaseFlavors[*driverName]
