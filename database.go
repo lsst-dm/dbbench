@@ -18,6 +18,8 @@ package main
 
 import (
 	"errors"
+	"net/url"
+	"strconv"
 )
 
 /*
@@ -69,6 +71,59 @@ type ConnectionConfig struct {
 	Port     int
 	Database string
 	Params   string
+}
+
+/*
+ * The user specified url for connecting to a database. If nil, no url was provided by the user.
+ */
+type ConnectionURL struct {
+	URL *url.URL
+}
+
+func (v ConnectionURL) String() string {
+	if v.URL != nil {
+		return v.URL.String()
+	}
+	return ""
+}
+
+func (v ConnectionURL) Set(s string) error {
+	if s == "" {
+		return errors.New("empty connection URL")
+	} else if u, err := url.Parse(s); err != nil {
+		return err
+	} else {
+		*v.URL = *u
+	}
+	return nil
+}
+
+func (v ConnectionURL) OverrideConnectionParams(connectionConfig *ConnectionConfig, driverName *string) {
+	if v != (ConnectionURL{}) {
+		u := v.URL
+		if u.Scheme != "" {
+			*driverName = u.Scheme
+		}
+		if u.Host != "" {
+			connectionConfig.Host = u.Host
+		}
+		if u.User.Username() != "" {
+			connectionConfig.Username = u.User.Username()
+		}
+		pass, isPassSet := u.User.Password()
+		if isPassSet {
+			connectionConfig.Password = pass
+		}
+		if u.Hostname() != "" {
+			connectionConfig.Host = u.Hostname()
+		}
+		if u.Port() != "" {
+			connectionConfig.Port, _ = strconv.Atoi(u.Port())
+		}
+		if u.Query() != nil {
+			connectionConfig.Params = u.Query().Encode()
+		}
+	}
 }
 
 /*
