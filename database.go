@@ -80,24 +80,6 @@ type ConnectionURL struct {
 	URL *url.URL
 }
 
-func (v ConnectionURL) String() string {
-	if v.URL != nil {
-		return v.URL.String()
-	}
-	return ""
-}
-
-func (v ConnectionURL) Set(s string) error {
-	if s == "" {
-		return errors.New("empty connection URL")
-	} else if u, err := url.Parse(s); err != nil {
-		return err
-	} else {
-		*v.URL = *u
-	}
-	return nil
-}
-
 func (v ConnectionURL) OverrideConnectionParams(connectionConfig *ConnectionConfig, driverName *string) {
 	if v != (ConnectionURL{}) {
 		u := v.URL

@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -85,7 +86,6 @@ var GlobalConfig ConnectionConfig
 var GlobalURL = ConnectionURL{&url.URL{}}
 
 func init() {
-
 	flag.StringVar(&GlobalConfig.Username, "username", "",
 		"Database connection username")
 	flag.StringVar(&GlobalConfig.Password, "password", "",
@@ -98,7 +98,16 @@ func init() {
 		"Database connection database")
 	flag.StringVar(&GlobalConfig.Params, "params", "",
 		"Override default connection parameters")
-	flag.Var(&GlobalURL, "url", "Connection url (mysql://user:pass@host:port?params), parameters provided here override those provided by other options")
+	flag.Func("url", "Connection url (mysql://user:pass@host:port?params), parameters provided here override those provided by other options", func(s string) error {
+		if s == "" {
+			return errors.New("empty connection URL")
+		} else if u, err := url.Parse(s); err != nil {
+			return err
+		} else {
+			*GlobalURL.URL = *u
+		}
+		return nil
+	})
 }
 
 func main() {
